@@ -1,0 +1,15 @@
+# Per-day staffing targets used by the scheduling algorithm.
+#
+# ⚠️ ASSUMPTION: I don't know Zummo Bike's real staffing rules, so these are
+# placeholder numbers. Edit freely — they're loaded into the DB by
+# scripts/init_db.py. min = fewest people the day needs, max = most to assign.
+#
+# As a seasonal summer bike shop, weekends are weighted heavier here as a guess.
+
+Mon: { min: 1, max: 2 }
+Tue: { min: 1, max: 2 }
+Wed: { min: 1, max: 2 }
+Thu: { min: 2, max: 3 }
+Fri: { min: 2, max: 4 }
+Sat: { min: 3, max: 5 }
+Sun: { min: 3, max: 5 }

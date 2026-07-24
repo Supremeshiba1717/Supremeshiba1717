@@ -1,0 +1,37 @@
+name: CI
+
+# Runs the offline test suite on every push / PR touching the app.
+# All tests mock Twilio + the LLM, so CI hits no network and costs nothing.
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "zummo-scheduler/**"
+      - ".github/workflows/ci.yml"
+  pull_request:
+    paths:
+      - "zummo-scheduler/**"
+      - ".github/workflows/ci.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: zummo-scheduler
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: zummo-scheduler/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        run: pytest -q

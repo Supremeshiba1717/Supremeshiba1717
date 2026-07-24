@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block content %}
+
+{% if not cycle %}
+  <div class="card">
+    <p>No active cycle right now.</p>
+    <form method="post" action="/web/trigger-cycle">
+      <button type="submit">Start a new weekly cycle</button>
+    </form>
+    <p class="muted">This is the same action the Tuesday-night cron job runs.</p>
+  </div>
+{% else %}
+  <div class="card">
+    <div class="row">
+      <div>
+        <strong>Week of {{ cycle.week_start_date }}</strong>
+        &nbsp;<span class="pill {{ cycle.status }}">{{ cycle.status }}</span>
+      </div>
+      <div style="margin-left:auto" class="row">
+        {% if cycle.status == "collecting" %}
+          <form class="inline" method="post" action="/web/build-draft">
+            <button type="submit">Build draft &rarr; send to manager</button>
+          </form>
+        {% endif %}
+        {% if schedule %}
+          <a href="/admin/generate-pdf" class="muted">(regenerate PDF via API)</a>
+        {% endif %}
+      </div>
+    </div>
+    {% if failed_sms %}
+      <p class="warn">⚠️ {{ failed_sms }} SMS send(s) failed this cycle — check logs.</p>
+    {% endif %}
+  </div>
+
+  <h2>Availability submissions</h2>
+  <table>
+    <thead><tr><th>Employee</th><th>Status</th><th>Days</th><th>Raw reply</th></tr></thead>
+    <tbody>
+    {% for s in submissions %}
+      <tr>
+        <td>{{ s.employee }}</td>
+        <td><span class="pill {{ s.status }}">{{ s.status }}</span></td>
+        <td>{{ s.days | join(", ") }}</td>
+        <td class="muted">{{ s.raw_text }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="4" class="muted">No submissions yet.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  {% if schedule %}
+    <h2>Draft schedule (v{{ schedule.version }})</h2>
+    <table>
+      <thead>
+        <tr><th>Employee</th>{% for d in days %}<th class="center">{{ d }}</th>{% endfor %}</tr>
+      </thead>
+      <tbody>
+      {% for name, dset in grid.items() %}
+        <tr>
+          <td>{{ name }}</td>
+          {% for d in days %}<td class="center">{% if d in dset %}✓{% endif %}</td>{% endfor %}
+        </tr>
+      {% else %}
+        <tr><td colspan="{{ days|length + 1 }}" class="muted">No shifts assigned.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+
+  {% if offers %}
+    <h2>Shift offers (revision loop)</h2>
+    <table>
+      <thead><tr><th>Employee</th><th>Day</th><th>Status</th></tr></thead>
+      <tbody>
+      {% for o in offers %}
+        <tr><td>{{ o.employee }}</td><td>{{ o.day }}</td>
+            <td><span class="pill {{ o.status }}">{{ o.status }}</span></td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+
+  {% if can_review %}
+    <h2>Manager review</h2>
+    <div class="card">
+      <p>Approve as-is, or request a change (asks the fairest available person
+         for extra days; removes the least-fair-to-keep for fewer).</p>
+      <form class="inline" method="post" action="/web/approve">
+        <button type="submit">✅ Approve &amp; send to all staff</button>
+      </form>
+
+      <div style="margin-top:14px" class="row">
+        <form class="inline row" method="post" action="/web/revise">
+          <select name="direction">
+            <option value="increase">More people on</option>
+            <option value="decrease">Fewer people on</option>
+          </select>
+          <select name="day">
+            {% for d in days %}<option value="{{ d }}">{{ d }}</option>{% endfor %}
+          </select>
+          <input type="number" name="count" value="1" min="1" style="width:60px">
+          <button class="ghost" type="submit">Apply change</button>
+        </form>
+      </div>
+      <p class="muted">Steve can do the exact same thing by texting back —
+         e.g. "need one more Thursday".</p>
+    </div>
+  {% endif %}
+{% endif %}
+
+{% endblock %}
