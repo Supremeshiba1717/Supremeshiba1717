@@ -10,7 +10,7 @@ import os
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 
-from app.routers import admin, sms_webhook
+from app.routers import admin, dashboard, sms_webhook
 from app.scheduler import create_scheduler
 
 logging.basicConfig(
@@ -19,6 +19,7 @@ logging.basicConfig(
 )
 
 app = FastAPI(title="Zummo Bike Scheduling Bot")
+app.include_router(dashboard.router)
 app.include_router(sms_webhook.router)
 app.include_router(admin.router)
 

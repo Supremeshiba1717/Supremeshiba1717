@@ -257,14 +257,35 @@ def _handle_manager_reply(db: Session, cycle: WeeklyCycle, body: str) -> str:
         return "manager reply unclear -> asked to clarify"
 
     # action == "revise"
+    changes = parsed.get("changes", [])
+    result = apply_revision(db, cycle, changes, nudge_nonresponders=True)
+    return "revise: " + result if result else "revise: nothing actionable"
+
+
+def apply_revision(
+    db: Session,
+    cycle: WeeklyCycle,
+    changes: list[dict],
+    *,
+    nudge_nonresponders: bool = True,
+    resend_draft_to_manager: bool = True,
+) -> str:
+    """Apply structured schedule changes. Shared by the SMS + web review paths.
+
+    `changes` is a list of {day, direction, count}. This is fully deterministic
+    (no LLM) — the LLM only ever produces the `changes` list upstream; the web
+    dashboard builds the same list from buttons, so both paths converge here.
+    """
     cycle.status = CycleStatus.REVISING
     db.commit()
 
-    # Also nudge any remaining non-responders (cooldown-limited).
-    reminder_service.send_reminders(db, cycle)
+    if nudge_nonresponders:
+        # Nudge any remaining non-responders (cooldown-limited).
+        reminder_service.send_reminders(db, cycle)
 
     handled = []
-    for change in parsed.get("changes", []):
+    had_decrease = False
+    for change in changes:
         day = change.get("day")
         if day not in DAYS:
             continue
@@ -276,14 +297,15 @@ def _handle_manager_reply(db: Session, cycle: WeeklyCycle, body: str) -> str:
         else:
             _reduce_day(db, cycle, day, count)
             handled.append(f"-{count} {day}")
+            had_decrease = True
 
-    # For reductions we can regenerate + re-send immediately; increases wait
-    # on employee YES/NO before re-sending an updated draft.
-    if any(c.get("direction") == "decrease" for c in parsed.get("changes", [])):
+    # Reductions apply immediately, so we can re-send the updated draft now.
+    # Increases wait on employee YES/NO before an updated draft goes out.
+    if had_decrease and resend_draft_to_manager:
         latest = scheduling_service.latest_schedule(db, cycle.id)
         _send_draft_to_manager(db, cycle, latest)
 
-    return "revise: " + "; ".join(handled) if handled else "revise: nothing actionable"
+    return "; ".join(handled)
 
 
 def _reduce_day(db: Session, cycle: WeeklyCycle, day: str, count: int) -> None:

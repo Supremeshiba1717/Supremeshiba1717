@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>Employees</h2>
+<p class="muted">
+  Source of truth is meant to be ConnecTeam (stubbed for now). Until that's
+  wired in, manage the roster here. Inactive employees are never texted or
+  scheduled.
+</p>
+
+<table>
+  <thead><tr><th>Name</th><th>Phone</th><th>Source</th><th>Status</th><th></th></tr></thead>
+  <tbody>
+  {% for e in employees %}
+    <tr>
+      <td>{{ e.name }}</td>
+      <td>{{ e.phone_number }}</td>
+      <td class="muted">{{ e.source }}</td>
+      <td>
+        {% if e.active %}<span class="pill parsed">active</span>
+        {% else %}<span class="pill no_response">inactive</span>{% endif %}
+      </td>
+      <td>
+        <form class="inline" method="post" action="/web/employees/{{ e.id }}/toggle">
+          <button class="ghost" type="submit">
+            {{ "Deactivate" if e.active else "Reactivate" }}
+          </button>
+        </form>
+      </td>
+    </tr>
+  {% else %}
+    <tr><td colspan="5" class="muted">No employees yet.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<div class="card">
+  <h3 style="margin-top:0">Add employee</h3>
+  <form class="row" method="post" action="/web/employees/add">
+    <input name="name" placeholder="Name" required>
+    <input name="phone_number" placeholder="+15551234567" required>
+    <button type="submit">Add</button>
+  </form>
+</div>
+
+{% endblock %}

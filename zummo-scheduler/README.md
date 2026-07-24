@@ -88,6 +88,31 @@ Starting the app also starts the APScheduler background jobs:
 For Twilio to reach the inbound webhook, expose the app publicly and point the
 number's "A message comes in" webhook at `https://<your-url>/webhook/sms`.
 
+## Web dashboard
+
+Open `http://localhost:8000/` for a light web UI over the same services the SMS
+flow uses (no second source of truth, no extra scheduling logic):
+
+- **Dashboard (`/`)** — current cycle status, availability submissions (with
+  `needs_review`/`no_response` flags), the draft grid, pending shift offers, and
+  a failed-SMS warning. When a draft is awaiting approval it shows **manager
+  review controls**: an Approve button and a structured "More/Fewer people on
+  &lt;day&gt;" revision form. Web revisions use buttons, so they're fully
+  deterministic — **no LLM call** to interpret a click (the LLM is only used to
+  interpret Steve's free-text *SMS* replies).
+- **Employees (`/employees`)** — list/add employees and toggle active status.
+  Handy while ConnecTeam is stubbed; inactive employees are never texted or
+  scheduled.
+
+The dashboard is a convenience layer — Steve can still do everything by text.
+⚠️ It's unauthenticated for local dev; add auth before exposing it publicly.
+
+## Continuous integration
+
+`.github/workflows/ci.yml` runs the test suite on every push/PR touching
+`zummo-scheduler/`. Tests mock Twilio and the LLM, so CI hits no network and
+costs nothing.
+
 ## Testing the full flow WITHOUT waiting a week
 
 Every step has an admin endpoint, and `/admin/simulate-inbound` lets you fake
@@ -180,6 +205,8 @@ app/
   routers/
     sms_webhook.py   Twilio inbound webhook (signature-verified)
     admin.py         manual trigger/status/simulate endpoints for testing
+    dashboard.py     web dashboard + employees admin (reuses the services)
+  templates/         Jinja2 HTML for the dashboard
   services/
     cycle_service.py         state machine + inbound message routing
     availability_service.py  request/record/parse availability
